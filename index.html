@@ -1,13 +1,43 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Trivia</title>
-    <link rel="stylesheet" href="style.css">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>🎯 Trivia Game</title>
+    <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-    
+    <!-- Tela de boas-vindas / cadastro do nome -->
+    <div id="welcome-screen" class="screen active">
+        <div class="card">
+            <h1>🧠 Quiz Geral</h1>
+            <p>Teste seus conhecimentos com 5 perguntas aleatórias!</p>
+            <input type="text" id="player-name" placeholder="Digite seu nome" maxlength="20" />
+            <button id="start-btn">Começar Jogo</button>
+        </div>
+    </div>
+
+    <!-- Tela do jogo (perguntas) -->
+    <div id="game-screen" class="screen">
+        <div class="card">
+            <div id="question-container"></div>
+            <div id="progress">Pergunta <span id="current-q">1</span>/5</div>
+        </div>
+    </div>
+
+    <!-- Tela de resultado final -->
+    <div id="result-screen" class="screen">
+        <div class="card">
+            <h2>🏆 Fim de Jogo!</h2>
+            <p id="result-message"></p>
+            <div id="score-board">
+                <h3>📊 Placar Geral</h3>
+                <ul id="score-list"></ul>
+            </div>
+            <button id="restart-btn">🔁 Jogar Novamente</button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
