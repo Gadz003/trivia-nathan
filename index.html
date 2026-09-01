@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quiz Geral</title>
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <!-- TELA DE BOAS-VINDAS -->
+    <div id="welcome-screen" class="screen active">
+        <div class="card welcome-card">
+            <h1>🧠 Quiz Geral</h1>
+            <p class="subtitle">Conhecimentos Gerais</p>
+            <p>Teste seus conhecimentos com 15 perguntas aleatórias!</p>
+            <input type="text" id="player-name" placeholder="Digite seu nome" maxlength="20" />
+            <button id="start-btn">Começar Jogo</button>
+        </div>
+    </div>
+
+    <!-- TELA DO JOGO -->
+    <div id="game-screen" class="screen">
+        <div class="card game-card">
+            <!-- Cabeçalho -->
+            <div class="game-header">
+                <div>
+                    <h2>Quiz Geral</h2>
+                    <span class="subtitle">Conhecimentos Gerais</span>
+                </div>
+                <div class="timer">
+                    <span id="timer-display">00:00</span>
+                </div>
+            </div>
+
+            <!-- Progresso -->
+            <div class="progress-bar">
+                <span id="question-progress">Pergunta 1 de 15</span>
+                <div class="progress-track">
+                    <div id="progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+
+            <!-- Área da pergunta -->
+            <div id="question-container">
+                <!-- Dinâmico -->
+            </div>
+
+            <!-- Botões de ação -->
+            <div class="action-buttons">
+                <button id="skip-btn" class="btn-secondary">Pular pergunta</button>
+                <button id="next-btn" class="btn-primary" disabled>Próxima pergunta →</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- TELA DE RESULTADO -->
+    <div id="result-screen" class="screen">
+        <div class="card result-card">
+            <h2>🏆 Fim de Jogo!</h2>
+            <p id="result-message"></p>
+            <div id="score-board">
+                <h3>📊 Placar Geral</h3>
+                <ul id="score-list"></ul>
+            </div>
+            <button id="restart-btn">🔁 Jogar Novamente</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
