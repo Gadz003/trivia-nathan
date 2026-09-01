@@ -1,5 +1,5 @@
-// ----- Funções originais (adaptadas) -----
-const fetchTrivia = async (endpoint = '', qtd = 5) => {
+// ----- Funções de API (mantidas) -----
+const fetchTrivia = async (endpoint = '', qtd = 15) => {
     try {
         const url = `https://opentdb.com/api.php?amount=${qtd}${endpoint}`;
         let resultado = await fetch(url);
@@ -19,28 +19,36 @@ const fetchTradutor = async (texto) => {
         return resultado[0][0];
     } catch (e) {
         console.error(e.message);
-        return texto; // fallback: texto original
+        return texto;
     }
 };
 
-// ----- Variáveis globais do jogo -----
+// ----- Variáveis do jogo -----
+const TOTAL_QUESTIONS = 15;
 let questions = [];
 let currentIndex = 0;
 let correctCount = 0;
 let playerName = '';
-let isAnswering = false;
+let isAnswered = false;
+let timerInterval = null;
+let seconds = 0;
+let skipped = false; // indica se pulou a pergunta atual
 
 // ----- Elementos DOM -----
 const welcomeScreen = document.getElementById('welcome-screen');
 const gameScreen = document.getElementById('game-screen');
 const resultScreen = document.getElementById('result-screen');
 const questionContainer = document.getElementById('question-container');
-const currentQSpan = document.getElementById('current-q');
-const resultMessage = document.getElementById('result-message');
-const scoreList = document.getElementById('score-list');
+const progressSpan = document.getElementById('question-progress');
+const progressFill = document.getElementById('progress-fill');
+const timerDisplay = document.getElementById('timer-display');
 const playerNameInput = document.getElementById('player-name');
 const startBtn = document.getElementById('start-btn');
+const skipBtn = document.getElementById('skip-btn');
+const nextBtn = document.getElementById('next-btn');
 const restartBtn = document.getElementById('restart-btn');
+const resultMessage = document.getElementById('result-message');
+const scoreList = document.getElementById('score-list');
 
 // ----- Funções auxiliares -----
 function showScreen(screenId) {
@@ -48,16 +56,19 @@ function showScreen(screenId) {
     document.getElementById(screenId).classList.add('active');
 }
 
-// Salva a pontuação no localStorage
+function formatTime(sec) {
+    const m = String(Math.floor(sec / 60)).padStart(2, '0');
+    const s = String(sec % 60).padStart(2, '0');
+    return `${m}:${s}`;
+}
+
 function saveScore(name, score) {
     const scores = JSON.parse(localStorage.getItem('triviaScores') || '[]');
     scores.push({ name, score, date: new Date().toLocaleString() });
-    // Mantém apenas os últimos 20 registros
     if (scores.length > 20) scores.shift();
     localStorage.setItem('triviaScores', JSON.stringify(scores));
 }
 
-// Exibe o placar (últimos registros)
 function renderScoreBoard() {
     const scores = JSON.parse(localStorage.getItem('triviaScores') || '[]');
     scoreList.innerHTML = '';
@@ -65,31 +76,49 @@ function renderScoreBoard() {
         scoreList.innerHTML = '<li style="justify-content:center; opacity:0.6;">Nenhum jogo registrado ainda.</li>';
         return;
     }
-    // Mostra os últimos 10 (do mais recente para o mais antigo)
     const reversed = [...scores].reverse().slice(0, 10);
     reversed.forEach(entry => {
         const li = document.createElement('li');
         li.innerHTML = `
             <span class="player-name">${entry.name}</span>
-            <span class="player-score">${entry.score}/5</span>
+            <span class="player-score">${entry.score}/${TOTAL_QUESTIONS}</span>
             <span style="font-size:0.7rem; opacity:0.5;">${entry.date}</span>
         `;
         scoreList.appendChild(li);
     });
 }
 
-// ----- Lógica principal do jogo -----
+// ----- Controle do cronômetro -----
+function startTimer() {
+    seconds = 0;
+    timerDisplay.textContent = '00:00';
+    clearInterval(timerInterval);
+    timerInterval = setInterval(() => {
+        seconds++;
+        timerDisplay.textContent = formatTime(seconds);
+    }, 1000);
+}
+
+function stopTimer() {
+    clearInterval(timerInterval);
+}
+
+// ----- Lógica do jogo -----
 async function startGame() {
     playerName = playerNameInput.value.trim() || 'Anônimo';
-    // Busca as perguntas
-    questions = await fetchTrivia();
+    questions = await fetchTrivia('', TOTAL_QUESTIONS);
     if (questions.length === 0) {
         alert('Erro ao carregar perguntas. Tente novamente.');
         return;
     }
+    // Se a API retornar menos que o total, ajustamos
+    // Mas vamos usar o que veio
     currentIndex = 0;
     correctCount = 0;
+    isAnswered = false;
+    skipped = false;
     showScreen('game-screen');
+    startTimer();
     await showQuestion();
 }
 
@@ -100,92 +129,134 @@ async function showQuestion() {
     }
 
     const question = questions[currentIndex];
-    currentQSpan.textContent = currentIndex + 1;
+    isAnswered = false;
+    skipped = false;
+    nextBtn.disabled = true;
+    skipBtn.disabled = false;
+
+    // Atualiza progresso
+    progressSpan.textContent = `Pergunta ${currentIndex + 1} de ${questions.length}`;
+    const progressPercent = ((currentIndex) / questions.length) * 100;
+    progressFill.style.width = `${progressPercent}%`;
+
+    // Limpa container
     questionContainer.innerHTML = '';
 
-    // Cria o texto da pergunta (traduzido)
+    // Texto da pergunta traduzido
     const perguntaTraduzida = await fetchTradutor(question.question);
     const divPergunta = document.createElement('div');
-    divPergunta.innerHTML = decodeURIComponent(perguntaTraduzida) + '<br>';
+    divPergunta.className = 'question-text';
+    divPergunta.textContent = decodeURIComponent(perguntaTraduzida);
     questionContainer.appendChild(divPergunta);
 
-    // Embaralha as respostas
+    // Opções
+    const optionsDiv = document.createElement('div');
+    optionsDiv.className = 'options-list';
+
     const respostas = [...question.incorrect_answers, question.correct_answer];
     respostas.sort(() => Math.random() - 0.5);
 
-    const divRespostas = document.createElement('div');
-    for (const resposta of respostas) {
-        const botao = document.createElement('button');
+    // Letras A, B, C, D
+    const letras = ['A', 'B', 'C', 'D'];
+
+    for (let i = 0; i < respostas.length; i++) {
+        const resposta = respostas[i];
         const textoTraduzido = await fetchTradutor(resposta);
-        botao.innerText = decodeURIComponent(textoTraduzido);
-        botao.dataset.correct = (resposta === question.correct_answer) ? 'true' : 'false';
-        divRespostas.appendChild(botao);
+        const btn = document.createElement('button');
+        btn.className = 'option-btn';
+        btn.innerHTML = `<span class="letter">${letras[i]}</span> ${decodeURIComponent(textoTraduzido)}`;
+        btn.dataset.correct = (resposta === question.correct_answer) ? 'true' : 'false';
+        btn.dataset.value = resposta;
+        btn.addEventListener('click', () => handleOptionClick(btn, question.correct_answer));
+        optionsDiv.appendChild(btn);
     }
-    questionContainer.appendChild(divRespostas);
 
-    // Traduz a resposta correta para comparação (usada no clique)
-    const corretaTraduzida = decodeURIComponent(await fetchTradutor(question.correct_answer));
+    questionContainer.appendChild(optionsDiv);
 
-    // Aguarda o clique do usuário
-    isAnswering = false;
-    const botoes = divRespostas.querySelectorAll('button');
-    botoes.forEach(btn => {
-        btn.onclick = () => handleAnswer(btn, corretaTraduzida, botoes);
-    });
+    // Atualiza barra de progresso para a pergunta atual (já está)
 }
 
-function handleAnswer(clickedBtn, correctAnswer, allButtons) {
-    if (isAnswering) return;
-    isAnswering = true;
+function handleOptionClick(clickedBtn, correctAnswer) {
+    if (isAnswered) return;
+    isAnswered = true;
+    skipped = false;
+    skipBtn.disabled = true;
 
-    const isCorrect = (clickedBtn.innerText === correctAnswer);
+    const allOptions = document.querySelectorAll('.option-btn');
+    const isCorrect = (clickedBtn.dataset.correct === 'true');
+
     if (isCorrect) correctCount++;
 
-    // Feedback visual
-    allButtons.forEach(btn => {
+    // Marca todas
+    allOptions.forEach(btn => {
         btn.disabled = true;
-        if (btn.innerText === correctAnswer) {
-            btn.style.backgroundColor = '#2ecc71';
-            btn.style.borderColor = '#2ecc71';
+        if (btn.dataset.correct === 'true') {
+            btn.classList.add('correct');
         } else if (btn === clickedBtn && !isCorrect) {
-            btn.style.backgroundColor = '#e74c3c';
-            btn.style.borderColor = '#e74c3c';
+            btn.classList.add('wrong');
         }
     });
 
-    // Avança para a próxima pergunta após 1 segundo
-    setTimeout(() => {
-        currentIndex++;
+    // Habilita "Próxima"
+    nextBtn.disabled = false;
+}
+
+function skipQuestion() {
+    if (isAnswered) return;
+    isAnswered = true;
+    skipped = true;
+    skipBtn.disabled = true;
+
+    // Marca a correta e desabilita tudo
+    const allOptions = document.querySelectorAll('.option-btn');
+    allOptions.forEach(btn => {
+        btn.disabled = true;
+        if (btn.dataset.correct === 'true') {
+            btn.classList.add('correct');
+        }
+    });
+
+    // Habilita "Próxima"
+    nextBtn.disabled = false;
+}
+
+function goToNext() {
+    if (!isAnswered) return;
+    // Avança
+    currentIndex++;
+    if (currentIndex >= questions.length) {
+        endGame();
+    } else {
         showQuestion();
-    }, 1000);
+    }
 }
 
 function endGame() {
+    stopTimer();
     // Salva a pontuação
     saveScore(playerName, correctCount);
 
-    // Exibe resultado
-    resultMessage.textContent = `${playerName}, você acertou ${correctCount} de 5 perguntas!`;
+    resultMessage.textContent = `${playerName}, você acertou ${correctCount} de ${questions.length} perguntas!`;
     renderScoreBoard();
     showScreen('result-screen');
 }
 
 // ----- Eventos -----
 startBtn.addEventListener('click', startGame);
-
-restartBtn.addEventListener('click', () => {
-    showScreen('welcome-screen');
-    playerNameInput.value = playerName; // mantém o nome
-});
-
-// Permite iniciar com Enter no campo de nome
 playerNameInput.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') startGame();
 });
 
-// Inicialização: mostra a tela de boas-vindas e carrega placar (já visível)
+skipBtn.addEventListener('click', skipQuestion);
+nextBtn.addEventListener('click', goToNext);
+
+restartBtn.addEventListener('click', () => {
+    showScreen('welcome-screen');
+    playerNameInput.value = playerName;
+});
+
+// Pré-carrega o placar na tela de resultado (já oculto)
 document.addEventListener('DOMContentLoaded', () => {
     showScreen('welcome-screen');
-    // Pré-carrega o placar na tela de resultado (já está oculto)
     renderScoreBoard();
 });
