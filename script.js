@@ -110,7 +110,15 @@ async function startGame() {
     if (nomeDigitado.length > 20) nomeDigitado = nomeDigitado.slice(0, 20);
     playerName = nomeDigitado || 'Anônimo';
 
+    // Evita duplo clique enquanto as perguntas carregam
+    startBtn.disabled = true;
+    startBtn.textContent = 'Carregando...';
+
     questions = await fetchTrivia('', TOTAL_QUESTIONS);
+
+    startBtn.disabled = false;
+    startBtn.textContent = 'Iniciar';
+
     if (questions.length === 0) {
         alert('Erro ao carregar perguntas. Tente novamente.');
         return;
