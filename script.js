@@ -245,6 +245,8 @@ function goToNext() {
 
 function endGame() {
     stopTimer();
+    // Garante que a barra de progresso feche em 100%
+    progressFill.style.width = '100%';
     // Salva a pontuação
     saveScore(playerName, correctCount);
 
