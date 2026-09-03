@@ -76,9 +76,16 @@ function renderScoreBoard() {
         scoreList.innerHTML = '<li style="justify-content:center; opacity:0.6;">Nenhum jogo registrado ainda.</li>';
         return;
     }
+    // Identifica a melhor pontuação para destacar no placar
+    const melhorPontuacao = Math.max(...scores.map(s => s.score));
+
     const reversed = [...scores].reverse().slice(0, 10);
     reversed.forEach(entry => {
         const li = document.createElement('li');
+        if (entry.score === melhorPontuacao) {
+            li.style.fontWeight = 'bold';
+            li.title = 'Melhor pontuação registrada';
+        }
         li.innerHTML = `
             <span class="player-name">${entry.name}</span>
             <span class="player-score">${entry.score}/${TOTAL_QUESTIONS}</span>
