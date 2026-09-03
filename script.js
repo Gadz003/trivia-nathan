@@ -105,7 +105,11 @@ function stopTimer() {
 
 // ----- Lógica do jogo -----
 async function startGame() {
-    playerName = playerNameInput.value.trim() || 'Anônimo';
+    // Valida e limita o tamanho do nome do jogador
+    let nomeDigitado = playerNameInput.value.trim();
+    if (nomeDigitado.length > 20) nomeDigitado = nomeDigitado.slice(0, 20);
+    playerName = nomeDigitado || 'Anônimo';
+
     questions = await fetchTrivia('', TOTAL_QUESTIONS);
     if (questions.length === 0) {
         alert('Erro ao carregar perguntas. Tente novamente.');
