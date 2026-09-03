@@ -269,6 +269,16 @@ restartBtn.addEventListener('click', () => {
     playerNameInput.value = playerName;
 });
 
+// Atalhos de teclado (1-4) para responder rapidamente durante o jogo
+document.addEventListener('keydown', (e) => {
+    if (!gameScreen.classList.contains('active')) return;
+    const index = parseInt(e.key, 10) - 1;
+    const options = document.querySelectorAll('.option-btn');
+    if (index >= 0 && index < options.length) {
+        options[index].click();
+    }
+});
+
 // Pré-carrega o placar na tela de resultado (já oculto)
 document.addEventListener('DOMContentLoaded', () => {
     showScreen('welcome-screen');
